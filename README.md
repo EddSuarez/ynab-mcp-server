@@ -40,9 +40,15 @@ All currency amounts are automatically converted between human-readable format a
 
 ### 2. Install & Build
 
+**Option A — local:**
 ```bash
 npm install
 npm run build
+```
+
+**Option B — Docker:**
+```bash
+docker build -t ynab-mcp-server .
 ```
 
 ### 3. Configure
@@ -55,8 +61,7 @@ export YNAB_ACCESS_TOKEN="your-token-here"
 
 ### 4. Use with Claude Desktop
 
-Add to your Claude Desktop config (`claude_desktop_config.json`):
-
+**Local:**
 ```json
 {
   "mcpServers": {
@@ -71,10 +76,29 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 }
 ```
 
+**Docker:**
+```json
+{
+  "mcpServers": {
+    "ynab": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "-e", "YNAB_ACCESS_TOKEN=your-token-here", "ynab-mcp-server"],
+      "env": {}
+    }
+  }
+}
+```
+
 ### 5. Use with Claude Code
 
+**Local:**
 ```bash
 claude mcp add ynab node /path/to/ynab-mcp-server/dist/index.js -e YNAB_ACCESS_TOKEN=your-token-here
+```
+
+**Docker:**
+```bash
+claude mcp add ynab docker -- run --rm -i -e YNAB_ACCESS_TOKEN=your-token-here ynab-mcp-server
 ```
 
 ## All 48 Tools
