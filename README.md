@@ -101,6 +101,38 @@ claude mcp add ynab node /path/to/ynab-mcp-server/dist/index.js -e YNAB_ACCESS_T
 claude mcp add ynab docker -- run --rm -i -e YNAB_ACCESS_TOKEN=your-token-here ynab-mcp-server
 ```
 
+## Remote HTTP mode (claude.ai connector / Cloud Run)
+
+By default the server speaks stdio. Set `MCP_TRANSPORT=http` to expose it as a remote MCP connector over Streamable HTTP:
+
+```bash
+MCP_TRANSPORT=http \
+MCP_AUTH_TOKEN=$(openssl rand -hex 32) \
+YNAB_ACCESS_TOKEN=your-token-here \
+node dist/index.js
+```
+
+- **Endpoint:** `POST /mcp` (stateless Streamable HTTP; a fresh server instance handles each request).
+- **Port:** `PORT` env var, default `8080` (Cloud Run sets this automatically).
+- **Auth:** every `/mcp` request must send `Authorization: Bearer $MCP_AUTH_TOKEN`. Requests without it get `401`. The process refuses to start (`exit 1`) if `MCP_AUTH_TOKEN` is unset or shorter than 32 characters.
+- **Health check:** `GET /healthz` → `200 ok` (for Cloud Run probes).
+- Other paths → `404`; non-POST methods on `/mcp` → `405`.
+
+Smoke test:
+
+```bash
+curl -s http://localhost:8080/healthz                      # → ok
+curl -s -X POST http://localhost:8080/mcp \
+  -H "authorization: Bearer $MCP_AUTH_TOKEN" \
+  -H "content-type: application/json" \
+  -H "accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+In claude.ai, add it as a custom connector with URL `https://<your-service>/mcp` and the bearer token.
+
+When `MCP_TRANSPORT` is unset, stdio behavior is unchanged — existing Claude Desktop configs keep working.
+
 ## All 48 Tools
 
 ### User (1)
