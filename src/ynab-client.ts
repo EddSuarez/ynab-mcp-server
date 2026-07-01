@@ -29,27 +29,6 @@ export function formatCurrency(milliunits: number, currencySymbol = "$"): string
 }
 
 // ---------------------------------------------------------------------------
-// Rate-limit tracking
-// ---------------------------------------------------------------------------
-
-interface RateLimitState {
-  remaining: number;
-  resetAt: Date | null;
-}
-
-const rateLimit: RateLimitState = {
-  remaining: 200,
-  resetAt: null,
-};
-
-export function getRateLimitInfo(): { remaining: number; resetAt: string | null } {
-  return {
-    remaining: rateLimit.remaining,
-    resetAt: rateLimit.resetAt?.toISOString() ?? null,
-  };
-}
-
-// ---------------------------------------------------------------------------
 // Error types
 // ---------------------------------------------------------------------------
 
@@ -113,12 +92,6 @@ export async function ynabRequest<T>(
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  // Update rate-limit tracking from headers
-  const rateLimitRemaining = response.headers.get("x-rate-limit");
-  if (rateLimitRemaining) {
-    rateLimit.remaining = parseInt(rateLimitRemaining, 10);
-  }
-
   if (!response.ok) {
     let errorId = "unknown";
     let detail = `HTTP ${response.status}`;
@@ -151,55 +124,4 @@ export async function ynabRequest<T>(
 
 export function resolvePlanId(planId?: string): string {
   return planId?.trim() || "last-used";
-}
-
-// ---------------------------------------------------------------------------
-// Tool handler wrapper — catches YnabApiError and returns clean MCP errors
-// ---------------------------------------------------------------------------
-
-type ToolResult = {
-  content: Array<{ type: "text"; text: string }>;
-  isError?: boolean;
-};
-
-export function withErrorHandling(
-  handler: (...args: never[]) => Promise<ToolResult>,
-): (...args: never[]) => Promise<ToolResult> {
-  return async (...args: never[]): Promise<ToolResult> => {
-    try {
-      return await handler(...args);
-    } catch (error) {
-      if (error instanceof YnabApiError) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  error: true,
-                  status: error.statusCode,
-                  id: error.errorId,
-                  detail: error.detail,
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-          isError: true,
-        };
-      }
-      const message =
-        error instanceof Error ? error.message : "An unknown error occurred";
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({ error: true, detail: message }, null, 2),
-          },
-        ],
-        isError: true,
-      };
-    }
-  };
 }
