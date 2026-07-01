@@ -16,6 +16,7 @@
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { createHash, timingSafeEqual } from "node:crypto";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -37,7 +38,7 @@ import { registerUtilityTools } from "./tools/utility.js";
 function buildServer(): McpServer {
   const server = new McpServer({
     name: "ynab-mcp-server",
-    version: "0.3.1",
+    version: "0.3.2",
   });
 
   registerUserTools(server);
@@ -54,6 +55,13 @@ function buildServer(): McpServer {
   registerUtilityTools(server);
 
   return server;
+}
+
+/** Constant-time token comparison; hashing first hides length differences. */
+function timingSafeTokenEqual(provided: string, expected: string): boolean {
+  const a = createHash("sha256").update(provided).digest();
+  const b = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(a, b);
 }
 
 function readBody(req: IncomingMessage): Promise<string> {
@@ -129,7 +137,13 @@ async function runHttp(): Promise<void> {
       return;
     }
 
-    if (req.headers.authorization !== `Bearer ${authToken}`) {
+    // Token via Authorization header, or ?key= for clients that can't set
+    // custom headers (claude.ai custom connectors only offer OAuth fields).
+    const provided =
+      req.headers.authorization?.replace(/^Bearer /, "") ??
+      url.searchParams.get("key") ??
+      "";
+    if (!timingSafeTokenEqual(provided, authToken)) {
       res.writeHead(401, { "content-type": "text/plain" }).end("unauthorized");
       return;
     }

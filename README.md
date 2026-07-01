@@ -129,7 +129,13 @@ curl -s -X POST http://localhost:8080/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
-In claude.ai, add it as a custom connector with URL `https://<your-service>/mcp` and the bearer token.
+In claude.ai, add it as a custom connector. The connector form only offers OAuth fields (no bearer header), so pass the token as a query parameter instead:
+
+```
+https://<your-service>/mcp?key=<MCP_AUTH_TOKEN>
+```
+
+Clients that can set headers (Claude Code, the Anthropic API) should prefer `Authorization: Bearer <token>`.
 
 When `MCP_TRANSPORT` is unset, stdio behavior is unchanged — existing Claude Desktop configs keep working.
 
