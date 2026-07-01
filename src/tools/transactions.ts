@@ -31,255 +31,7 @@ function enrichTransaction(
 
 export function registerTransactionTools(server: McpServer): void {
   // -----------------------------------------------------------------------
-  // list_transactions
-  // -----------------------------------------------------------------------
-  server.registerTool(
-    "list_transactions",
-    {
-      title: "List YNAB Transactions",
-      description:
-        "Returns transactions for a plan. Supports filtering by date, " +
-        "type (uncategorized, unapproved), and delta requests.",
-      inputSchema: z.object({
-        plan_id: z
-          .string()
-          .optional()
-          .describe('The plan ID. Defaults to "last-used".'),
-        since_date: z
-          .string()
-          .optional()
-          .describe(
-            "Only return transactions on or after this date (ISO format, e.g. 2025-01-01).",
-          ),
-        type: z
-          .enum(["uncategorized", "unapproved"])
-          .optional()
-          .describe("Filter to only uncategorized or unapproved transactions."),
-        last_knowledge_of_server: z
-          .number()
-          .int()
-          .optional()
-          .describe("Delta request cursor."),
-      }),
-    },
-    async ({ plan_id, since_date, type, last_knowledge_of_server }) => {
-      const pid = resolvePlanId(plan_id);
-      const data = await ynabRequest<{
-        transactions: Transaction[];
-        server_knowledge: number;
-      }>(`/plans/${pid}/transactions`, {
-        params: { since_date, type, last_knowledge_of_server },
-      });
-      const enriched = data.transactions.map(enrichTransaction);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              { transactions: enriched, server_knowledge: data.server_knowledge },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
-    },
-  );
-
-  // -----------------------------------------------------------------------
-  // get_transaction
-  // -----------------------------------------------------------------------
-  server.registerTool(
-    "get_transaction",
-    {
-      title: "Get YNAB Transaction",
-      description: "Returns a single transaction by ID.",
-      inputSchema: z.object({
-        plan_id: z
-          .string()
-          .optional()
-          .describe('The plan ID. Defaults to "last-used".'),
-        transaction_id: z.string().describe("The transaction ID."),
-      }),
-    },
-    async ({ plan_id, transaction_id }) => {
-      const pid = resolvePlanId(plan_id);
-      const data = await ynabRequest<{ transaction: Transaction }>(
-        `/plans/${pid}/transactions/${transaction_id}`,
-      );
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(enrichTransaction(data.transaction), null, 2),
-          },
-        ],
-      };
-    },
-  );
-
-  // -----------------------------------------------------------------------
-  // list_transactions_by_account
-  // -----------------------------------------------------------------------
-  server.registerTool(
-    "list_transactions_by_account",
-    {
-      title: "List Transactions by Account",
-      description:
-        "Returns all transactions for a specific account.",
-      inputSchema: z.object({
-        plan_id: z
-          .string()
-          .optional()
-          .describe('The plan ID. Defaults to "last-used".'),
-        account_id: z.string().describe("The account ID."),
-        since_date: z
-          .string()
-          .optional()
-          .describe("Only return transactions on or after this date (ISO format)."),
-        type: z
-          .enum(["uncategorized", "unapproved"])
-          .optional()
-          .describe("Filter by transaction type."),
-        last_knowledge_of_server: z
-          .number()
-          .int()
-          .optional()
-          .describe("Delta request cursor."),
-      }),
-    },
-    async ({ plan_id, account_id, since_date, type, last_knowledge_of_server }) => {
-      const pid = resolvePlanId(plan_id);
-      const data = await ynabRequest<{
-        transactions: Transaction[];
-        server_knowledge: number;
-      }>(`/plans/${pid}/accounts/${account_id}/transactions`, {
-        params: { since_date, type, last_knowledge_of_server },
-      });
-      const enriched = data.transactions.map(enrichTransaction);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              { transactions: enriched, server_knowledge: data.server_knowledge },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
-    },
-  );
-
-  // -----------------------------------------------------------------------
-  // list_transactions_by_category
-  // -----------------------------------------------------------------------
-  server.registerTool(
-    "list_transactions_by_category",
-    {
-      title: "List Transactions by Category",
-      description: "Returns all transactions for a specific category.",
-      inputSchema: z.object({
-        plan_id: z
-          .string()
-          .optional()
-          .describe('The plan ID. Defaults to "last-used".'),
-        category_id: z.string().describe("The category ID."),
-        since_date: z
-          .string()
-          .optional()
-          .describe("Only return transactions on or after this date (ISO format)."),
-        type: z
-          .enum(["uncategorized", "unapproved"])
-          .optional()
-          .describe("Filter by transaction type."),
-        last_knowledge_of_server: z
-          .number()
-          .int()
-          .optional()
-          .describe("Delta request cursor."),
-      }),
-    },
-    async ({ plan_id, category_id, since_date, type, last_knowledge_of_server }) => {
-      const pid = resolvePlanId(plan_id);
-      const data = await ynabRequest<{
-        transactions: Transaction[];
-        server_knowledge: number;
-      }>(`/plans/${pid}/categories/${category_id}/transactions`, {
-        params: { since_date, type, last_knowledge_of_server },
-      });
-      const enriched = data.transactions.map(enrichTransaction);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              { transactions: enriched, server_knowledge: data.server_knowledge },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
-    },
-  );
-
-  // -----------------------------------------------------------------------
-  // list_transactions_by_payee
-  // -----------------------------------------------------------------------
-  server.registerTool(
-    "list_transactions_by_payee",
-    {
-      title: "List Transactions by Payee",
-      description: "Returns all transactions for a specific payee.",
-      inputSchema: z.object({
-        plan_id: z
-          .string()
-          .optional()
-          .describe('The plan ID. Defaults to "last-used".'),
-        payee_id: z.string().describe("The payee ID."),
-        since_date: z
-          .string()
-          .optional()
-          .describe("Only return transactions on or after this date (ISO format)."),
-        type: z
-          .enum(["uncategorized", "unapproved"])
-          .optional()
-          .describe("Filter by transaction type."),
-        last_knowledge_of_server: z
-          .number()
-          .int()
-          .optional()
-          .describe("Delta request cursor."),
-      }),
-    },
-    async ({ plan_id, payee_id, since_date, type, last_knowledge_of_server }) => {
-      const pid = resolvePlanId(plan_id);
-      const data = await ynabRequest<{
-        transactions: Transaction[];
-        server_knowledge: number;
-      }>(`/plans/${pid}/payees/${payee_id}/transactions`, {
-        params: { since_date, type, last_knowledge_of_server },
-      });
-      const enriched = data.transactions.map(enrichTransaction);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              { transactions: enriched, server_knowledge: data.server_knowledge },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
-    },
-  );
-
-  // -----------------------------------------------------------------------
-  // create_transaction  (Phase 2 — write)
+  // create_transaction
   // -----------------------------------------------------------------------
   server.registerTool(
     "create_transaction",
@@ -397,7 +149,7 @@ export function registerTransactionTools(server: McpServer): void {
   );
 
   // -----------------------------------------------------------------------
-  // update_transaction  (Phase 2 — write)
+  // update_transaction
   // -----------------------------------------------------------------------
   server.registerTool(
     "update_transaction",
@@ -478,7 +230,7 @@ export function registerTransactionTools(server: McpServer): void {
   );
 
   // -----------------------------------------------------------------------
-  // delete_transaction  (Phase 2 — write)
+  // delete_transaction
   // -----------------------------------------------------------------------
   server.registerTool(
     "delete_transaction",
@@ -511,113 +263,149 @@ export function registerTransactionTools(server: McpServer): void {
   );
 
   // -----------------------------------------------------------------------
-  // import_transactions  (Phase 2 — write)
+  // find_transactions
   // -----------------------------------------------------------------------
   server.registerTool(
-    "import_transactions",
+    "find_transactions",
     {
-      title: "Import YNAB Transactions",
+      title: "Find Transactions",
       description:
-        "Triggers an import of available transactions on all linked (Direct Import) " +
-        'accounts. Equivalent to clicking "Import" in the YNAB app.',
+        "Search transactions by combining filters: payee name (partial match), " +
+        "category name (partial match), amount range, date range, memo text, " +
+        "and cleared/approved status. All filters are optional and combined with AND logic.",
       inputSchema: z.object({
         plan_id: z
           .string()
           .optional()
           .describe('The plan ID. Defaults to "last-used".'),
+        since_date: z
+          .string()
+          .optional()
+          .describe("Start date (ISO format)."),
+        until_date: z
+          .string()
+          .optional()
+          .describe("End date (ISO format)."),
+        payee_name: z
+          .string()
+          .optional()
+          .describe("Partial payee name match (case-insensitive)."),
+        category_name: z
+          .string()
+          .optional()
+          .describe("Partial category name match (case-insensitive)."),
+        memo: z
+          .string()
+          .optional()
+          .describe("Partial memo text match (case-insensitive)."),
+        min_amount: z
+          .number()
+          .optional()
+          .describe(
+            "Minimum amount in currency units (e.g. -100 to find expenses of $100+).",
+          ),
+        max_amount: z
+          .number()
+          .optional()
+          .describe("Maximum amount in currency units."),
+        cleared: z
+          .enum(["cleared", "uncleared", "reconciled"])
+          .optional()
+          .describe("Filter by cleared status."),
+        approved: z
+          .boolean()
+          .optional()
+          .describe("Filter by approval status."),
+        max_results: z
+          .number()
+          .int()
+          .optional()
+          .describe("Maximum number of results to return (default: 50)."),
       }),
     },
-    async ({ plan_id }) => {
+    async ({
+      plan_id,
+      since_date,
+      until_date,
+      payee_name,
+      category_name,
+      memo,
+      min_amount,
+      max_amount,
+      cleared,
+      approved,
+      max_results,
+    }) => {
       const pid = resolvePlanId(plan_id);
-      const data = await ynabRequest<{ transaction_ids: string[] }>(
-        `/plans/${pid}/transactions/import`,
-        { method: "POST" },
+      const limit = max_results ?? 50;
+
+      const data = await ynabRequest<{ transactions: Transaction[] }>(
+        `/plans/${pid}/transactions`,
+        { params: { since_date } },
       );
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(data, null, 2),
-          },
-        ],
-      };
-    },
-  );
 
-  // -----------------------------------------------------------------------
-  // update_transactions  (Phase 3 — bulk write)
-  // -----------------------------------------------------------------------
-  server.registerTool(
-    "update_transactions",
-    {
-      title: "Bulk Update YNAB Transactions",
-      description:
-        "Updates multiple transactions at once. Each transaction in the array " +
-        "must have either an 'id' or 'import_id' to identify it. " +
-        "Amounts should be in currency units (auto-converted to milliunits).",
-      inputSchema: z.object({
-        plan_id: z
-          .string()
-          .optional()
-          .describe('The plan ID. Defaults to "last-used".'),
-        transactions: z
-          .array(
-            z.object({
-              id: z.string().optional().describe("Transaction ID."),
-              import_id: z
-                .string()
-                .optional()
-                .describe("Import ID (alternative identifier)."),
-              account_id: z.string().optional(),
-              date: z.string().optional(),
-              amount: z
-                .number()
-                .optional()
-                .describe("Amount in currency units."),
-              payee_name: z.string().optional(),
-              payee_id: z.string().optional(),
-              category_id: z.string().optional(),
-              memo: z.string().optional(),
-              cleared: z
-                .enum(["cleared", "uncleared", "reconciled"])
-                .optional(),
-              approved: z.boolean().optional(),
-              flag_color: z
-                .enum(["red", "orange", "yellow", "green", "blue", "purple"])
-                .optional(),
-            }),
-          )
-          .describe("Array of transactions to update."),
-      }),
-    },
-    async ({ plan_id, transactions }) => {
-      const pid = resolvePlanId(plan_id);
+      let results = data.transactions;
 
-      const converted = transactions.map((tx) => {
-        const out: Record<string, unknown> = { ...tx };
-        if (tx.amount !== undefined) {
-          out.amount = toMilliunits(tx.amount);
-        }
-        return out;
-      });
+      if (until_date) {
+        results = results.filter((t) => t.date <= until_date);
+      }
+      if (payee_name) {
+        const search = payee_name.toLowerCase();
+        results = results.filter((t) =>
+          t.payee_name?.toLowerCase().includes(search),
+        );
+      }
+      if (category_name) {
+        const search = category_name.toLowerCase();
+        results = results.filter((t) =>
+          t.category_name?.toLowerCase().includes(search),
+        );
+      }
+      if (memo) {
+        const search = memo.toLowerCase();
+        results = results.filter((t) =>
+          t.memo?.toLowerCase().includes(search),
+        );
+      }
+      if (min_amount !== undefined) {
+        const minMilli = toMilliunits(min_amount);
+        results = results.filter((t) => t.amount >= minMilli);
+      }
+      if (max_amount !== undefined) {
+        const maxMilli = toMilliunits(max_amount);
+        results = results.filter((t) => t.amount <= maxMilli);
+      }
+      if (cleared) {
+        results = results.filter((t) => t.cleared === cleared);
+      }
+      if (approved !== undefined) {
+        results = results.filter((t) => t.approved === approved);
+      }
 
-      const data = await ynabRequest<{
-        transactions: Transaction[];
-        transaction_ids: string[];
-      }>(`/plans/${pid}/transactions`, {
-        method: "PATCH",
-        body: { transactions: converted },
-      });
+      const total = results.length;
+      const truncated = results.slice(0, limit);
 
-      const enriched = data.transactions.map(enrichTransaction);
+      const formatted = truncated.map((t) => ({
+        id: t.id,
+        date: t.date,
+        amount: formatCurrency(t.amount),
+        payee: t.payee_name,
+        category: t.category_name,
+        account: t.account_name,
+        memo: t.memo,
+        cleared: t.cleared,
+        approved: t.approved,
+      }));
+
       return {
         content: [
           {
             type: "text",
             text: JSON.stringify(
               {
-                transactions: enriched,
-                transaction_ids: data.transaction_ids,
+                total_matches: total,
+                showing: formatted.length,
+                transactions: formatted,
               },
               null,
               2,
