@@ -3,6 +3,9 @@ name: Build and deploy to Cloud Run
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "README.md"
   workflow_dispatch:
 
 concurrency:
