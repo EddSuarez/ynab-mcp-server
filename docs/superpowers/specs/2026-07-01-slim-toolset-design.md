@@ -43,8 +43,9 @@ existing prompts keep working.
 
 **Escape hatch:**
 - `ynab_get(path, params?)` — raw GET against the YNAB API
-  (`https://api.ynab.com/v1`). Validation: path must start with `/budgets`
-  or `/user`; only GET; returns the raw JSON `data` payload. Covers months,
+  (`https://api.ynab.com/v1`). Validation: path must start with `/plans`,
+  `/budgets` or `/user` (this codebase uses the `/plans` alias); only GET;
+  returns the raw JSON `data` payload. Covers months,
   payees, scheduled transactions, payee locations, money movements, delta
   requests — everything deleted below.
 
